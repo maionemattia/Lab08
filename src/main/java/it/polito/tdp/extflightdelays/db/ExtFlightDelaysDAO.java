@@ -5,9 +5,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
+import it.polito.tdp.extflightdelays.model.Adiacenza;
 import it.polito.tdp.extflightdelays.model.Airline;
 import it.polito.tdp.extflightdelays.model.Airport;
 import it.polito.tdp.extflightdelays.model.Flight;
@@ -37,9 +40,10 @@ public class ExtFlightDelaysDAO {
 		}
 	}
 
-	public List<Airport> loadAllAirports() {
+	public Map<Integer, Airport> loadAllAirports() {
 		String sql = "SELECT * FROM airports";
 		List<Airport> result = new ArrayList<Airport>();
+		Map<Integer, Airport> idMap = new HashMap<>();
 
 		try {
 			Connection conn = ConnectDB.getConnection();
@@ -51,10 +55,11 @@ public class ExtFlightDelaysDAO {
 						rs.getString("CITY"), rs.getString("STATE"), rs.getString("COUNTRY"), rs.getDouble("LATITUDE"),
 						rs.getDouble("LONGITUDE"), rs.getDouble("TIMEZONE_OFFSET"));
 				result.add(airport);
+				idMap.put(airport.getId(), airport);
 			}
 
 			conn.close();
-			return result;
+			return idMap;
 
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -91,4 +96,33 @@ public class ExtFlightDelaysDAO {
 			throw new RuntimeException("Error Connection Database");
 		}
 	}
+	
+	public List<Adiacenza> listaAdiacenze(Integer media) {
+		String sql = "SELECT ORIGIN_AIRPORT_ID AS P, DESTINATION_AIRPORT_ID AS A, AVG(DISTANCE) AS MEDIA " + 
+				"FROM flights " + 
+				"WHERE ORIGIN_AIRPORT_ID > DESTINATION_AIRPORT_ID " + 
+				"GROUP BY ORIGIN_AIRPORT_ID, DESTINATION_AIRPORT_ID " + 
+				"HAVING MEDIA < ?";
+		List<Adiacenza> result = new ArrayList<Adiacenza>();
+
+		try {
+			Connection conn = ConnectDB.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, media);
+			ResultSet rs = st.executeQuery();
+			
+			while (rs.next()) {
+				result.add(new Adiacenza(rs.getInt("P"),rs.getInt("A"),rs.getInt("MEDIA")));
+			}
+
+			conn.close();
+			return result;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			System.out.println("Errore connessione al database");
+			throw new RuntimeException("Error Connection Database");
+		}
+	}
+	
 }
